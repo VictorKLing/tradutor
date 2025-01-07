@@ -15,21 +15,44 @@ function App() {
   const [sourceText, setSourceText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [translatedText, setTranslatedText] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    handleTranslate();
-  }, [sourceText]);
+    if (sourceText) {
+      const delay = setTimeout(() => {
+        handleTranslate();
+      }, 300);
+      return () => clearTimeout(delay);
+    }
+  }, [sourceText, targetLang, sourceLang]);
 
   const handleTranslate = async () => {
-    setIsLoading(true)
-    const response = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(sourceText)}&langpair=${sourceLang}|${targetLang}`
-    );    if (!response.ok) {
-      throw new Error(`HTTP ERROR: ${response.status}`);
+    setIsLoading(true);
+    setError ("");
+    try {
+      const response = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+          sourceText
+        )}&langpair=${sourceLang}|${targetLang}`
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP ERROR: ${response.status}`);
+      }
+      const data = await response.json();
+      setTranslatedText(data.responseData.translatedText);
+    } catch (err) {
+      setError(`Erro ao tentar traduzir:${err.message}. Tente novamente.`);
+    } finally {
+      setIsLoading(false);
     }
-    const data = await response.json();
-    setTranslatedText(data.responseData.translatedText)
-    setIsLoading(false)
+    setIsLoading(false);
+  };
+
+  const swapTranslate = () => {
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
+    setSourceText(translatedText);
+    setTranslatedText(translatedText);
   };
 
   return (
@@ -55,7 +78,10 @@ function App() {
                 </option>
               ))}
             </select>
-            <button className="p-2 rounded-full hover:bg-gray-100 outline-none">
+            <button
+              onClick={swapTranslate}
+              className="p-2 rounded-full hover:bg-gray-100 outline-none"
+            >
               <svg
                 className="w-5 h-5 text-headerColor"
                 fill="none"
@@ -94,15 +120,20 @@ function App() {
               ></textarea>
             </div>
             <div className="p-4 relative bg-secondaryBackground border-l border-gray-200">
-              <div className="absolute inset-0 flex items-center justify-center ">
-                {isLoading ? (
+              {isLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center ">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
-                ) : (
-                  <p className="text-lg text-textColor">{translatedText}</p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <p className="text-lg text-textColor">{translatedText}</p>
+              )}
             </div>
           </div>
+          {error && (
+            <div className="p-4 bg-red-100 border-t border-red-400 text-red-700">
+              {error}
+            </div>
+          )}
         </div>
       </main>
       <footer className="bg-white border-t border-gray-200 mt-auto">
